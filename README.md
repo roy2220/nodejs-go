@@ -1,5 +1,7 @@
-# Example
-```
+# nodejs-go
+stepping stone towards ES7 async/await
+# Examples
+```js
 const go = require('./go');
 
 function* sleep(ms) {
