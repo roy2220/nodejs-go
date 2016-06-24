@@ -4,8 +4,8 @@ stepping stone towards ES7 async/await
 ```js
 const go = require('./go');
 
-function* sleep(ms) {
-    yield new Promise((resolve) => {
+function sleep(ms) {
+    return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
 }
