@@ -16,10 +16,33 @@ function isGenerator(x) {
 function *go(generator, callback) {
     let next = yield;
     let stack = [generator];
-    let result;
+    let result = [true, null];
 
     for (;;) {
-        let state = generator.next(result);
+        let state;
+
+        try {
+            if (result[0]) {
+                state = generator.next(result[1]);
+            } else {
+                state = generator.throw(result[1]);
+            }
+        } catch (error) {
+            result = [false, error];
+            stack.pop();
+
+            if (stack.length == 0) {
+                if (callback != null) {
+                    callback(result[0], result[1]);
+                }
+
+                return;
+            } else {
+                generator = stack[stack.length - 1];
+            }
+
+            continue;
+        }
 
         if (isGenerator(state.value)) {
             generator = state.value;
@@ -29,19 +52,25 @@ function *go(generator, callback) {
             } else {
                 stack.push(generator);
             }
+
+            result = [true, null];
         } else {
             if (isPromise(state.value)) {
                 let promise = state.value;
+                let ok;
 
-                promise.then((result) => {
-                    next(result);
-                }, (result) => {
-                    next(result);
-                });
+                promise.then((value) => {
+                    ok = true;
+                    next(value);
+                }, (error) => {
+                    ok = false;
+                    next(error);
+                })
 
-                result = yield;
+                let value_or_error = yield;
+                result = [ok, value_or_error]
             } else {
-                result = state.value;
+                result = [true, state.value];
             }
 
             if (state.done) {
@@ -49,13 +78,13 @@ function *go(generator, callback) {
 
                 if (stack.length == 0) {
                     if (callback != null) {
-                        callback(result);
+                        callback(result[0], result[1]);
                     }
 
                     return;
+                } else {
+                    generator = stack[stack.length - 1];
                 }
-
-                generator = stack[stack.length - 1];
             }
         }
     }
